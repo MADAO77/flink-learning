@@ -2,12 +2,10 @@ package com.zhisheng.common.utils;
 
 
 import com.zhisheng.common.constant.PropertiesConstants;
-import com.zhisheng.common.model.Metrics;
+import com.zhisheng.common.model.MetricEvent;
 import com.zhisheng.common.schemas.MetricSchema;
-import com.zhisheng.common.watermarks.MetricWatermark;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartition;
@@ -28,6 +26,16 @@ import static com.zhisheng.common.constant.PropertiesConstants.*;
  * 微信公众号：zhisheng
  */
 public class KafkaConfigUtil {
+
+    /**
+     * 设置基础的 Kafka 配置
+     *
+     * @return
+     */
+    public static Properties buildKafkaProps() {
+        return buildKafkaProps(ParameterTool.fromSystemProperties());
+    }
+
     /**
      * 设置 kafka 配置
      *
@@ -46,7 +54,7 @@ public class KafkaConfigUtil {
     }
 
 
-    public static DataStreamSource<Metrics> buildSource(StreamExecutionEnvironment env) throws IllegalAccessException {
+    public static DataStreamSource<MetricEvent> buildSource(StreamExecutionEnvironment env) throws IllegalAccessException {
         ParameterTool parameter = (ParameterTool) env.getConfig().getGlobalJobParameters();
         String topic = parameter.getRequired(PropertiesConstants.METRICS_TOPIC);
         Long time = parameter.getLong(PropertiesConstants.CONSUMER_FROM_TIME, 0L);
@@ -60,10 +68,10 @@ public class KafkaConfigUtil {
      * @return
      * @throws IllegalAccessException
      */
-    public static DataStreamSource<Metrics> buildSource(StreamExecutionEnvironment env, String topic, Long time) throws IllegalAccessException {
+    public static DataStreamSource<MetricEvent> buildSource(StreamExecutionEnvironment env, String topic, Long time) throws IllegalAccessException {
         ParameterTool parameterTool = (ParameterTool) env.getConfig().getGlobalJobParameters();
         Properties props = buildKafkaProps(parameterTool);
-        FlinkKafkaConsumer011<Metrics> consumer = new FlinkKafkaConsumer011<>(
+        FlinkKafkaConsumer011<MetricEvent> consumer = new FlinkKafkaConsumer011<>(
                 topic,
                 new MetricSchema(),
                 props);
@@ -89,9 +97,5 @@ public class KafkaConfigUtil {
 
         consumer.close();
         return partitionOffset;
-    }
-
-    public static SingleOutputStreamOperator<Metrics> parseSource(DataStreamSource<Metrics> dataStreamSource) {
-        return dataStreamSource.assignTimestampsAndWatermarks(new MetricWatermark());
     }
 }
